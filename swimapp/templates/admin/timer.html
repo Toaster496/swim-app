@@ -1,0 +1,234 @@
+{% extends "admin_base.html" %}
+{% block title %}Official Timer{% endblock %}
+
+{% block content %}
+<div class="timer-layout">
+    <div class="timer-main">
+        <div class="timer-topbar">
+            <h1>TIME ENTRY CONSOLE</h1>
+            <div class="heat-info">
+                {% if selected_event %}
+                <span class="heat-badge">HEAT: {{ selected_event.heat }}</span>
+                <span class="heat-badge">EVENT: {{ selected_event.event_code }}</span>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if message %}
+        <div class="flash flash-success">{{ message }}</div>
+        {% endif %}
+        {% if error %}
+        <div class="flash flash-error">{{ error }}</div>
+        {% endif %}
+
+        <!-- Event selector / creator -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="row-flex gap-2">
+                    <form method="GET" action="{{ url_for('admin.timer') }}" class="flex-1">
+                        <label class="form-label">SELECT EVENT</label>
+                        <select name="event_id" onchange="this.form.submit()" class="form-select">
+                            <option value="">-- choose event --</option>
+                            {% for ev in events %}
+                            <option value="{{ ev.id }}" {% if selected_event and selected_event.id == ev.id %}selected{% endif %}>
+                                {{ ev.event_code }} — {{ ev.name }} ({{ ev.gender }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </form>
+                    <div>
+                        <label class="form-label">&nbsp;</label>
+                        <button class="btn-secondary" onclick="toggleModal('new-event-modal')">+ New Event</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% if selected_event %}
+        <!-- Time submission form -->
+        <div class="card">
+            <div class="card-body">
+                <h2 class="section-title">MANUAL ENTRY</h2>
+                <p class="section-sub">Record official times for current heat.</p>
+
+                <form method="POST" action="{{ url_for('admin.timer') }}?event_id={{ selected_event.id }}" id="time-form">
+                    <input type="hidden" name="event_id" value="{{ selected_event.id }}">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>EVENT ID</label>
+                            <input type="text" value="{{ selected_event.event_code }}" disabled class="form-input-disabled">
+                        </div>
+                        <div class="form-group">
+                            <label>LANE</label>
+                            <select name="lane" id="lane-select" class="form-select" onchange="updateSwimmerName(this)">
+                                <option value="">--</option>
+                                {% for a in athletes %}
+                                <option value="{{ a.lane }}">Lane {{ a.lane }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>SWIMMER NAME</label>
+                        <input type="text" id="swimmer-name-display" value="" readonly class="form-input-disabled">
+                    </div>
+
+                    <div class="form-group">
+                        <label>TIME INPUT <span class="form-hint">MM:SS.ms</span></label>
+                        <input type="text" name="time_input" id="time-input" placeholder="00:00.00" class="form-input time-field" autocomplete="off">
+                    </div>
+
+                    <div class="form-check">
+                        <input type="checkbox" name="verified" id="verified" value="on">
+                        <label for="verified">VERIFIED ENTRY — Confirm time against backup pad.</label>
+                    </div>
+
+                    <button type="submit" class="btn-primary btn-full">SUBMIT TIME</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Add athlete -->
+        <div class="card mt-4">
+            <div class="card-body">
+                <h2 class="section-title">ADD SWIMMER</h2>
+                <form method="POST" action="{{ url_for('admin.add_athlete') }}">
+                    <input type="hidden" name="event_id" value="{{ selected_event.id }}">
+                    <div class="form-row">
+                        <div class="form-group flex-1">
+                            <label>NAME</label>
+                            <input type="text" name="name" class="form-input" placeholder="SMITH, J." required>
+                        </div>
+                        <div class="form-group" style="width:80px">
+                            <label>LANE</label>
+                            <input type="number" name="lane" class="form-input" min="1" max="10" required>
+                        </div>
+                        <div class="form-group" style="width:100px">
+                            <label>TEAM</label>
+                            <input type="text" name="team" class="form-input" placeholder="AUS">
+                        </div>
+                        <div class="form-group" style="align-self:flex-end">
+                            <button type="submit" class="btn-secondary">Add</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Reset event -->
+        <div class="mt-3" style="text-align:right">
+            <form method="POST" action="{{ url_for('admin.reset_event') }}" onsubmit="return confirm('Reset all times for {{ selected_event.event_code }}? This cannot be undone.');">
+                <input type="hidden" name="event_id" value="{{ selected_event.id }}">
+                <button type="submit" class="btn-danger">Reset Event</button>
+            </form>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="timer-side">
+        <div class="validation-panel">
+            <h3 class="panel-title">VALIDATION CHECKS</h3>
+            <label class="check-item">
+                <input type="checkbox" checked disabled> Format Check (MM:SS.ms)
+            </label>
+            <label class="check-item">
+                <input type="checkbox" checked disabled> Range Check (+/- 10%)
+            </label>
+            <label class="check-item">
+                <input type="checkbox" id="dupe-check"> Duplicate Alert
+            </label>
+        </div>
+
+        <div class="recent-panel">
+            <div class="recent-header">
+                <span>RECENT SUBMISSIONS</span>
+                {% if selected_event %}<span class="recent-heat">{{ selected_event.heat }}</span>{% endif %}
+            </div>
+            {% if recent %}
+            <table class="recent-table">
+                <thead>
+                    <tr><th>LN</th><th>NAME</th><th>TIME</th><th></th></tr>
+                </thead>
+                <tbody>
+                    {% for a in recent %}
+                    <tr>
+                        <td class="lane-num">{{ '%02d'|format(a.lane) }}</td>
+                        <td>{{ a.name }}</td>
+                        <td class="mono">{{ a.time_display() }}</td>
+                        <td>
+                            <form method="POST" action="{{ url_for('admin.remove_athlete') }}" style="display:inline">
+                                <input type="hidden" name="athlete_id" value="{{ a.id }}">
+                                <button type="submit" class="btn-icon-danger" title="Remove" onclick="return confirm('Remove {{ a.name }}?')">✕</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p class="empty-state">No times submitted yet.</p>
+            {% endif %}
+        </div>
+
+        {% if selected_event %}
+        <a href="{{ url_for('admin.export_csv', event_id=selected_event.id) }}" class="btn-secondary btn-full mt-3">↓ Export CSV</a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- new event modal -->
+<div class="modal-overlay" id="new-event-modal" style="display:none">
+    <div class="modal">
+        <h2>New Event</h2>
+        <form method="POST" action="{{ url_for('admin.add_event') }}">
+            <div class="form-group">
+                <label>Event Name</label>
+                <input type="text" name="name" class="form-input" placeholder="100m Freestyle - Final" required>
+            </div>
+            <div class="form-row">
+                <div class="form-group flex-1">
+                    <label>Gender</label>
+                    <select name="gender" class="form-select">
+                        <option>Open</option>
+                        <option>Men</option>
+                        <option>Women</option>
+                        <option>Mixed</option>
+                    </select>
+                </div>
+                <div class="form-group flex-1">
+                    <label>Heat</label>
+                    <input type="text" name="heat" class="form-input" placeholder="H01 - Prelims" value="Final">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Meet Name</label>
+                <input type="text" name="meet_name" class="form-input" placeholder="2024 Nationals" value="General Meet">
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn-secondary" onclick="toggleModal('new-event-modal')">Cancel</button>
+                <button type="submit" class="btn-primary">Create Event</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// build a lookup so changing lane updates the swimmer name field
+var athleteMap = {
+    {% if athletes %}
+    {% for a in athletes %}
+    {{ a.lane }}: "{{ a.name }}",
+    {% endfor %}
+    {% endif %}
+};
+
+function updateSwimmerName(select) {
+    var lane = parseInt(select.value);
+    var field = document.getElementById('swimmer-name-display');
+    field.value = athleteMap[lane] || '';
+}
+</script>
+{% endblock %}

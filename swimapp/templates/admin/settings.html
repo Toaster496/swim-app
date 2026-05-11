@@ -1,0 +1,114 @@
+{% extends "admin_base.html" %}
+{% block title %}System Settings{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>System Settings</h1>
+</div>
+
+<div class="settings-tabs" id="settings-tabs">
+    <button class="tab-btn active" onclick="showTab('general', this)">General</button>
+    <button class="tab-btn" onclick="showTab('security', this)">Security</button>
+    <button class="tab-btn" onclick="showTab('notifications', this)">Notifications</button>
+</div>
+
+<form method="POST" action="{{ url_for('admin.settings') }}">
+
+    <div class="tab-panel" id="tab-general">
+        <p class="tab-desc">General settings are managed on the Security tab for this application.</p>
+        <div class="card">
+            <div class="card-body">
+                <h3>Application Info</h3>
+                <p>Version: V3.0.4-STABLE</p>
+                <p>Pool: OLYMPIC_POOL_A</p>
+                <p>Running on: {{ request.host }}</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="tab-panel" id="tab-security" style="display:none">
+        <div class="settings-row">
+            <div class="settings-card">
+                <h3 class="settings-card-title">SESSION POLICIES</h3>
+                <div class="form-group">
+                    <label>Session Timeout</label>
+                    <select name="session_timeout" class="form-select">
+                        {% for val in ['15', '30', '60', '120'] %}
+                        <option value="{{ val }}" {% if s.get('session_timeout') == val %}selected{% endif %}>{{ val }} mins</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-check">
+                    <input type="checkbox" name="force_logout_on_ip_change" id="force-logout"
+                           {% if s.get('force_logout_on_ip_change') == 'true' %}checked{% endif %}>
+                    <label for="force-logout">Force Logout on IP Change</label>
+                </div>
+            </div>
+
+            <div class="settings-card">
+                <h3 class="settings-card-title">PASSWORD POLICY</h3>
+                <div class="form-group">
+                    <label>Min Password Length</label>
+                    <input type="number" name="min_password_length" class="form-input" style="width:80px"
+                           value="{{ s.get('min_password_length', '12') }}" min="8" max="64">
+                </div>
+                <div class="form-check">
+                    <input type="checkbox" name="require_uppercase" id="req-upper"
+                           {% if s.get('require_uppercase') == 'true' %}checked{% endif %}>
+                    <label for="req-upper">Require Uppercase</label>
+                </div>
+                <div class="form-check">
+                    <input type="checkbox" name="require_numbers" id="req-nums"
+                           {% if s.get('require_numbers') == 'true' %}checked{% endif %}>
+                    <label for="req-nums">Require Numbers</label>
+                </div>
+                <div class="form-check">
+                    <input type="checkbox" name="require_symbols" id="req-sym"
+                           {% if s.get('require_symbols') == 'true' %}checked{% endif %}>
+                    <label for="req-sym">Require Symbols</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="settings-card mt-3">
+            <h3 class="settings-card-title">TWO-FACTOR AUTHENTICATION</h3>
+            <div class="twofa-row">
+                <div class="form-check">
+                    <input type="checkbox" name="enforce_2fa_admins" id="2fa-admin"
+                           {% if s.get('enforce_2fa_admins') == 'true' %}checked{% endif %}>
+                    <label for="2fa-admin">Enforce 2FA for All Admins</label>
+                </div>
+                <div class="form-check">
+                    <input type="checkbox" name="allow_2fa_timekeepers" id="2fa-tk"
+                           {% if s.get('allow_2fa_timekeepers') == 'true' %}checked{% endif %}>
+                    <label for="2fa-tk">Allow 2FA for Timekeepers</label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="tab-panel" id="tab-notifications" style="display:none">
+        <div class="card">
+            <div class="card-body">
+                <p>Email notification settings are configured via environment variables (MAIL_SERVER, MAIL_USERNAME, etc.).</p>
+                <p>See the README for details.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="settings-actions">
+        <button type="submit" class="btn-primary">SAVE CONFIGURATION</button>
+    </div>
+</form>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function showTab(name, btn) {
+    document.querySelectorAll('.tab-panel').forEach(function(p) { p.style.display = 'none'; });
+    document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+    document.getElementById('tab-' + name).style.display = 'block';
+    btn.classList.add('active');
+}
+</script>
+{% endblock %}

@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Results — Swim Score Pro</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="viewer-layout">
+
+<header class="viewer-header">
+    <div class="viewer-brand">
+        <span class="brand-box">SWIM_SCORE_PRO</span>
+    </div>
+    <nav class="topbar-nav">
+        <a href="{{ url_for('viewer.live') }}" class="topbar-link active">LIVE_FEEDS</a>
+        <a href="{{ url_for('viewer.scoreboard') }}" class="topbar-link">SCOREBOARD</a>
+    </nav>
+    <div class="topbar-icons">
+        <a href="{{ url_for('auth.login') }}" title="Admin Login">⏻</a>
+    </div>
+</header>
+
+<div class="viewer-body">
+    <aside class="viewer-sidebar">
+        <div class="sidebar-meta">
+            <span class="pool-name">OLYMPIC_POOL_A</span>
+            <span class="version">V3.0.4-STABLE</span>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="{{ url_for('viewer.live') }}" class="nav-item active">
+                <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                DASHBOARD
+            </a>
+            <a href="{{ url_for('viewer.live') }}" class="nav-item">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 15"/></svg>
+                LANE CONFIG
+            </a>
+            <a href="{{ url_for('viewer.live') }}" class="nav-item">
+                <svg viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>
+                HEAT SHEETS
+            </a>
+            <a href="{{ url_for('viewer.scoreboard') }}" class="nav-item">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 15"/></svg>
+                OFFICIAL TIMER
+            </a>
+            <a href="{{ url_for('auth.login') }}" class="nav-item">
+                <svg viewBox="0 0 24 24"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+                SYSTEM LOGS
+            </a>
+        </nav>
+        <div class="sidebar-footer">
+            <a href="{{ url_for('viewer.scoreboard', event_id=selected_event.id if selected_event else '') }}" class="btn-generate" target="_blank">SCOREBOARD</a>
+        </div>
+    </aside>
+
+    <main class="viewer-main">
+        <div class="live-header">
+            <h1>LIVE RESULTS</h1>
+            <div class="live-meta">
+                {% if selected_event %}
+                <span class="live-dot"></span>
+                <span class="mono">LAST UPDATED: <span id="last-updated">--:--:-- UTC</span></span>
+                {% endif %}
+            </div>
+            <div class="auto-refresh-toggle">
+                AUTO-REFRESH
+                <label class="toggle-switch">
+                    <input type="checkbox" id="auto-refresh-toggle" checked>
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+        </div>
+
+        <div class="live-filters">
+            <form method="GET" action="{{ url_for('viewer.live') }}" id="filter-form">
+                <div class="filter-group">
+                    <label>MEET</label>
+                    <select name="meet" class="form-select" onchange="this.form.submit()">
+                        <option value="">All Meets</option>
+                        {% for m in meets %}
+                        <option value="{{ m }}" {% if meet_filter == m %}selected{% endif %}>{{ m }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>EVENT</label>
+                    <select name="event_id" class="form-select" onchange="this.form.submit()">
+                        {% for ev in events %}
+                        <option value="{{ ev.id }}" {% if selected_event and selected_event.id == ev.id %}selected{% endif %}>
+                            {{ ev.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>GENDER</label>
+                    <select name="gender" class="form-select" onchange="this.form.submit()">
+                        <option value="">All</option>
+                        {% for g in genders %}
+                        <option value="{{ g }}" {% if gender_filter == g %}selected{% endif %}>{{ g }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>SEARCH ATHLETE / TEAM</label>
+                    <input type="text" name="search" value="{{ search }}" placeholder="Enter query..." class="form-input search-input">
+                </div>
+                <a href="{{ url_for('admin.export_csv', event_id=selected_event.id) if selected_event else '#' }}"
+                   class="btn-secondary">↓ EXPORT CSV</a>
+            </form>
+        </div>
+
+        {% if events %}
+        <div class="card">
+            <table class="data-table live-table" id="live-results-table">
+                <thead>
+                    <tr>
+                        <th>RANK</th>
+                        <th>LANE</th>
+                        <th>NAME</th>
+                        <th>TEAM</th>
+                        <th>TIME</th>
+                        <th>RT</th>
+                        <th>DELTA</th>
+                    </tr>
+                </thead>
+                <tbody id="table-body">
+                    {% if athletes %}
+                    {% for a in athletes %}
+                    <tr class="{{ 'row-first' if loop.first else '' }}">
+                        <td class="rank-cell">{{ a.rank or '--' }}</td>
+                        <td class="lane-num">{{ a.lane }}</td>
+                        <td class="athlete-name {{ 'name-bold' if loop.first else '' }}">{{ a.name }}</td>
+                        <td>{{ a.team }}</td>
+                        <td class="mono time-val {{ 'time-first' if loop.first else '' }}">{{ a.time_display() }}</td>
+                        <td class="mono">{{ '%.2f'|format(a.reaction_time) if a.reaction_time else '--' }}</td>
+                        <td class="mono delta-val">{{ a.delta_display(leader_time) }}</td>
+                    </tr>
+                    {% endfor %}
+                    {% else %}
+                    <tr><td colspan="7" class="empty-state">No swimmers in this event yet.</td></tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="pagination-bar">
+            <span class="pagination-info">
+                SHOWING {{ ((page-1)*per_page)+1 if total > 0 else 0 }}-{{ [page*per_page, total]|min }} OF {{ total }} RECORDS
+            </span>
+            <div class="pagination">
+                {% if page > 1 %}
+                <a href="{{ url_for('viewer.live', event_id=selected_event.id if selected_event else '', page=page-1, search=search) }}" class="page-btn">‹</a>
+                {% endif %}
+                {% for p in range(1, total_pages+1) %}
+                <a href="{{ url_for('viewer.live', event_id=selected_event.id if selected_event else '', page=p, search=search) }}"
+                   class="page-btn {% if p == page %}active{% endif %}">{{ p }}</a>
+                {% endfor %}
+                {% if page < total_pages %}
+                <a href="{{ url_for('viewer.live', event_id=selected_event.id if selected_event else '', page=page+1, search=search) }}" class="page-btn">›</a>
+                {% endif %}
+            </div>
+        </div>
+        {% else %}
+        <div class="card">
+            <p class="empty-state">No events have been created yet. <a href="{{ url_for('auth.login') }}">Admin login →</a></p>
+        </div>
+        {% endif %}
+    </main>
+</div>
+
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+<script>
+var currentEventId = {{ selected_event.id if selected_event else 'null' }};
+var refreshInterval = null;
+
+function startRefresh() {
+    if (!currentEventId) return;
+    refreshInterval = setInterval(function() {
+        fetch('/api/live?event_id=' + currentEventId)
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                document.getElementById('last-updated').textContent = data.last_updated;
+                // only update the table if we're on page 1 and no search is active
+                var searchVal = document.querySelector('input[name="search"]').value;
+                if (searchVal === '') {
+                    updateTable(data.data);
+                }
+            })
+            .catch(function() {
+                // network blip - just skip this tick
+            });
+    }, 2000);
+}
+
+function updateTable(rows) {
+    var tbody = document.getElementById('table-body');
+    if (!tbody || rows.length === 0) return;
+    tbody.innerHTML = '';
+    rows.slice(0, 6).forEach(function(a, i) {
+        var tr = document.createElement('tr');
+        if (i === 0) tr.className = 'row-first';
+        tr.innerHTML = '<td class="rank-cell">' + a.rank + '</td>' +
+            '<td class="lane-num">' + a.lane + '</td>' +
+            '<td class="athlete-name' + (i === 0 ? ' name-bold' : '') + '">' + a.name + '</td>' +
+            '<td>' + a.team + '</td>' +
+            '<td class="mono time-val' + (i === 0 ? ' time-first' : '') + '">' + a.time + '</td>' +
+            '<td class="mono">' + a.reaction_time + '</td>' +
+            '<td class="mono delta-val">' + a.delta + '</td>';
+        tbody.appendChild(tr);
+    });
+}
+
+var toggle = document.getElementById('auto-refresh-toggle');
+toggle.addEventListener('change', function() {
+    if (this.checked) {
+        startRefresh();
+    } else {
+        clearInterval(refreshInterval);
+    }
+});
+
+startRefresh();
+</script>
+</body>
+</html>

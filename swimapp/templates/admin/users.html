@@ -1,0 +1,222 @@
+{% extends "admin_base.html" %}
+{% block title %}Manage Access{% endblock %}
+
+{% block content %}
+<div class="page-header row-flex">
+    <div>
+        <h1>Manage Access</h1>
+        <p class="page-sub">Configure user accounts and system-wide role permissions.</p>
+    </div>
+    <button class="btn-primary" onclick="toggleModal('new-user-modal')">ADD NEW USER</button>
+</div>
+
+<div class="users-layout">
+    <div class="users-main">
+        <div class="filter-bar-simple">
+            <form method="GET" action="{{ url_for('admin.users') }}">
+                <input type="text" name="search" value="{{ search }}" placeholder="Search users..." class="form-input search-input">
+                <button type="submit" class="btn-secondary btn-sm">Search</button>
+                {% if search %}<a href="{{ url_for('admin.users') }}" class="btn-ghost btn-sm">Clear</a>{% endif %}
+            </form>
+            <span class="total-count">TOTAL RECORDS: {{ total }}</span>
+        </div>
+
+        {% if user_list.items %}
+        <div class="card">
+            <table class="data-table users-table">
+                <thead>
+                    <tr>
+                        <th>USER IDENTITY</th>
+                        <th>SYSTEM ROLE</th>
+                        <th>STATUS</th>
+                        <th>ACTIONS</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for u in user_list.items %}
+                    <tr>
+                        <td>
+                            <div class="user-avatar">{{ u.username[:2].upper() }}</div>
+                            <div class="user-info">
+                                <span class="user-name">{{ u.username }}</span>
+                                <span class="user-email">{{ u.email }}</span>
+                            </div>
+                        </td>
+                        <td>
+                            <form method="POST" action="{{ url_for('admin.edit_user', user_id=u.id) }}" id="edit-form-{{ u.id }}">
+                                <select name="role" class="form-select role-select" onchange="document.getElementById('edit-form-{{ u.id }}').submit()">
+                                    <option value="admin" {% if u.role == 'admin' %}selected{% endif %}>ADMIN</option>
+                                    <option value="timekeeper" {% if u.role == 'timekeeper' %}selected{% endif %}>TIMEKEEPER</option>
+                                    <option value="viewer" {% if u.role == 'viewer' %}selected{% endif %}>VIEWER</option>
+                                </select>
+                                <input type="checkbox" name="is_active" {% if u.is_active %}checked{% endif %} style="display:none" id="active-{{ u.id }}">
+                            </form>
+                        </td>
+                        <td>
+                            <span class="badge-status {{ 'badge-active' if u.is_active else 'badge-disabled' }}">
+                                {{ 'ACTIVE' if u.is_active else 'DISABLED' }}
+                            </span>
+                        </td>
+                        <td class="action-cell">
+                            <button class="btn-icon" onclick="toggleModal('edit-user-{{ u.id }}')" title="Edit user">✎</button>
+                            {% if u.id != current_user.id %}
+                            <form method="POST" action="{{ url_for('admin.delete_user', user_id=u.id) }}" style="display:inline"
+                                  onsubmit="return confirm('Delete {{ u.username }}? This cannot be undone.')">
+                                <button type="submit" class="btn-icon-danger" title="Delete">✕</button>
+                            </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="pagination">
+            {% if user_list.has_prev %}
+            <a href="{{ url_for('admin.users', page=user_list.prev_num, search=search) }}" class="page-btn">‹</a>
+            {% endif %}
+            {% for p in user_list.iter_pages() %}
+                {% if p %}
+                <a href="{{ url_for('admin.users', page=p, search=search) }}" class="page-btn {% if p == user_list.page %}active{% endif %}">{{ p }}</a>
+                {% else %}
+                <span class="page-btn">...</span>
+                {% endif %}
+            {% endfor %}
+            {% if user_list.has_next %}
+            <a href="{{ url_for('admin.users', page=user_list.next_num, search=search) }}" class="page-btn">›</a>
+            {% endif %}
+        </div>
+        {% else %}
+        <p class="empty-state">No users found.</p>
+        {% endif %}
+    </div>
+
+    <div class="users-side">
+        <div class="role-panel">
+            <h3 class="panel-title">🛡 Role Permissions</h3>
+            <p class="panel-sub">Select a role template below to view its global access parameters.</p>
+
+            <div class="form-group">
+                <label>TARGET ROLE</label>
+                <select id="role-preview" class="form-select" onchange="showRolePerms(this.value)">
+                    <option value="timekeeper">TIMEKEEPER</option>
+                    <option value="admin">ADMIN</option>
+                    <option value="viewer">VIEWER</option>
+                </select>
+            </div>
+
+            <div class="perm-section">
+                <span class="perm-section-title">MEET EXECUTION</span>
+                <label class="perm-item" id="perm-edit-times">
+                    <input type="checkbox" id="cb-edit-times"> Can Edit Times
+                    <span class="perm-desc">Allows manual override of touch pad entries.</span>
+                </label>
+                <label class="perm-item" id="perm-heat-sheets">
+                    <input type="checkbox" id="cb-heat-sheets"> Manage Heat Sheets
+                    <span class="perm-desc">Create and reorganise heats and lanes.</span>
+                </label>
+            </div>
+
+            <div class="perm-section">
+                <span class="perm-section-title">SYSTEM ADMINISTRATION</span>
+                <label class="perm-item">
+                    <input type="checkbox" id="cb-view-logs"> Can View Logs
+                    <span class="perm-desc">Access raw hardware timing feeds and error logs.</span>
+                </label>
+                <label class="perm-item">
+                    <input type="checkbox" id="cb-manage-users" disabled> Manage Users
+                    <span class="perm-desc">Restricted to Global Admin only.</span>
+                </label>
+            </div>
+
+            <button class="btn-secondary btn-full" onclick="showRolePerms(document.getElementById('role-preview').value)">SAVE POLICY</button>
+        </div>
+    </div>
+</div>
+
+<!-- Add user modal -->
+<div class="modal-overlay" id="new-user-modal" style="display:none">
+    <div class="modal">
+        <h2>Add New User</h2>
+        <form method="POST" action="{{ url_for('admin.add_user') }}">
+            <div class="form-group">
+                <label>Username</label>
+                <input type="text" name="username" class="form-input" required>
+            </div>
+            <div class="form-group">
+                <label>Email</label>
+                <input type="email" name="email" class="form-input" required>
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" name="password" class="form-input" required>
+            </div>
+            <div class="form-group">
+                <label>Role</label>
+                <select name="role" class="form-select">
+                    <option value="viewer">VIEWER</option>
+                    <option value="timekeeper">TIMEKEEPER</option>
+                    <option value="admin">ADMIN</option>
+                </select>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn-secondary" onclick="toggleModal('new-user-modal')">Cancel</button>
+                <button type="submit" class="btn-primary">Create User</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Per-user edit modals -->
+{% for u in user_list.items %}
+<div class="modal-overlay" id="edit-user-{{ u.id }}" style="display:none">
+    <div class="modal">
+        <h2>Edit: {{ u.username }}</h2>
+        <form method="POST" action="{{ url_for('admin.edit_user', user_id=u.id) }}">
+            <div class="form-group">
+                <label>Role</label>
+                <select name="role" class="form-select">
+                    <option value="admin" {% if u.role == 'admin' %}selected{% endif %}>ADMIN</option>
+                    <option value="timekeeper" {% if u.role == 'timekeeper' %}selected{% endif %}>TIMEKEEPER</option>
+                    <option value="viewer" {% if u.role == 'viewer' %}selected{% endif %}>VIEWER</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="check-item">
+                    <input type="checkbox" name="is_active" {% if u.is_active %}checked{% endif %}> Account Active
+                </label>
+            </div>
+            <div class="form-group">
+                <label>New Password (leave blank to keep current)</label>
+                <input type="password" name="new_password" class="form-input" autocomplete="new-password">
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn-secondary" onclick="toggleModal('edit-user-{{ u.id }}')">Cancel</button>
+                <button type="submit" class="btn-primary">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endfor %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+var rolePerms = {
+    admin: { editTimes: true, heatSheets: true, viewLogs: true, manageUsers: true },
+    timekeeper: { editTimes: true, heatSheets: true, viewLogs: false, manageUsers: false },
+    viewer: { editTimes: false, heatSheets: false, viewLogs: false, manageUsers: false }
+};
+
+function showRolePerms(role) {
+    var p = rolePerms[role] || rolePerms.viewer;
+    document.getElementById('cb-edit-times').checked = p.editTimes;
+    document.getElementById('cb-heat-sheets').checked = p.heatSheets;
+    document.getElementById('cb-view-logs').checked = p.viewLogs;
+    document.getElementById('cb-manage-users').checked = p.manageUsers;
+}
+
+showRolePerms('timekeeper');
+</script>
+{% endblock %}

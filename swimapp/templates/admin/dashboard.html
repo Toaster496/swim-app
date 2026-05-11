@@ -1,0 +1,104 @@
+{% extends "admin_base.html" %}
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>System Administration</h1>
+    <p class="page-sub">Manage global settings, user access, and system diagnostics.</p>
+</div>
+
+<div class="dash-grid">
+    <div class="dash-main">
+        <div class="card-grid">
+            <a href="{{ url_for('admin.timer') }}" class="dash-card">
+                <div class="dash-card-icon">⏱</div>
+                <div class="dash-card-arrow">↗</div>
+                <h3>Timekeeper Mode</h3>
+                <p>Manual override and precision entry form.</p>
+            </a>
+            <a href="{{ url_for('viewer.live') }}" class="dash-card" target="_blank">
+                <div class="dash-card-icon">📊</div>
+                <div class="dash-card-arrow">↗</div>
+                <h3>Live Leaderboard</h3>
+                <p>Real-time charting and data visualization.</p>
+            </a>
+            <a href="{{ url_for('admin.users') }}" class="dash-card">
+                <div class="dash-card-icon">👥</div>
+                <div class="dash-card-arrow">↗</div>
+                <h3>Manage Users</h3>
+                <p>Roles, permissions, and access control.</p>
+            </a>
+            <a href="{{ url_for('admin.audit') }}" class="dash-card">
+                <div class="dash-card-icon">🛡</div>
+                <div class="dash-card-arrow">↗</div>
+                <h3>System Audit Logs</h3>
+                <p>Security events and transaction history.</p>
+            </a>
+        </div>
+    </div>
+
+    <div class="dash-side">
+        <div class="status-panel">
+            <div class="status-header">
+                <span>SYSTEM STATUS</span>
+                <span class="status-dot" id="status-indicator">●</span>
+            </div>
+            <div class="status-row">
+                <span>Database</span>
+                <span class="badge-status {{ 'badge-online' if stats.db_status == 'ONLINE' else 'badge-offline' }}">
+                    {{ stats.db_status }}
+                </span>
+            </div>
+            <div class="status-row">
+                <span>Sync Target</span>
+                <span class="badge-status badge-active">ACTIVE</span>
+            </div>
+            <div class="status-row">
+                <span>API Latency</span>
+                <span class="latency-val" id="api-latency">--ms</span>
+            </div>
+            <div class="status-row">
+                <span>Events</span>
+                <span>{{ stats.total_events }}</span>
+            </div>
+            <div class="status-row">
+                <span>Athletes</span>
+                <span>{{ stats.total_athletes }}</span>
+            </div>
+            <div class="status-row">
+                <span>Users</span>
+                <span>{{ stats.total_users }}</span>
+            </div>
+
+            <button class="btn-diagnostics" id="run-diag-btn" onclick="runDiagnostics()">RUN DIAGNOSTICS</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function runDiagnostics() {
+    var btn = document.getElementById('run-diag-btn');
+    btn.textContent = 'RUNNING...';
+    btn.disabled = true;
+    var start = Date.now();
+
+    fetch('{{ url_for("admin.run_diagnostics") }}', { method: 'POST' })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            var latency = Date.now() - start;
+            document.getElementById('api-latency').textContent = latency + 'ms';
+            btn.textContent = 'COMPLETE ✓';
+            setTimeout(function() {
+                btn.textContent = 'RUN DIAGNOSTICS';
+                btn.disabled = false;
+            }, 2000);
+        })
+        .catch(function() {
+            btn.textContent = 'ERROR';
+            btn.disabled = false;
+        });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,101 @@
+{% extends "admin_base.html" %}
+{% block title %}System Audit Log{% endblock %}
+
+{% block content %}
+<div class="page-header row-flex">
+    <div>
+        <h1>System Audit Log</h1>
+        <p class="page-sub">Immutable record of system configuration and access events.</p>
+    </div>
+    <a href="{{ url_for('admin.export_audit_csv') }}" class="btn-primary">↓ EXPORT CSV</a>
+</div>
+
+<div class="filter-bar">
+    <form method="GET" action="{{ url_for('admin.audit') }}" class="filter-form">
+        <div class="filter-group">
+            <label>TIME WINDOW</label>
+            <input type="datetime-local" name="time_from" value="{{ time_from }}" class="form-input">
+            <span>→</span>
+            <input type="datetime-local" name="time_to" value="{{ time_to }}" class="form-input">
+        </div>
+        <div class="filter-group">
+            <label>EVENT CLASSIFICATION</label>
+            <select name="severity" class="form-select">
+                <option value="ALL_EVENTS" {% if severity_filter == 'ALL_EVENTS' %}selected{% endif %}>ALL_EVENTS</option>
+                <option value="INFO" {% if severity_filter == 'INFO' %}selected{% endif %}>INFO</option>
+                <option value="WARN" {% if severity_filter == 'WARN' %}selected{% endif %}>WARN</option>
+                <option value="HIGH" {% if severity_filter == 'HIGH' %}selected{% endif %}>HIGH</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label>TARGET ENTITY / USER</label>
+            <input type="text" name="search" value="{{ search }}" placeholder="username, IP..." class="form-input">
+        </div>
+        <button type="submit" class="btn-secondary">Filter</button>
+        <a href="{{ url_for('admin.audit') }}" class="btn-ghost">Clear</a>
+    </form>
+</div>
+
+<div class="card">
+    <div class="log-table-header">
+        <span class="log-stream-title">LOG OUTPUT STREAM</span>
+        <span class="log-count">Showing {{ logs.total }} entries</span>
+    </div>
+
+    {% if logs.items %}
+    <table class="data-table audit-table">
+        <thead>
+            <tr>
+                <th>TIMESTAMP (UTC)</th>
+                <th>IP ADDRESS</th>
+                <th>USER / ENTITY</th>
+                <th>ACTION DETAILS</th>
+                <th>SEVERITY</th>
+                <th>STATUS</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for log in logs.items %}
+            <tr>
+                <td class="mono">{{ log.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                <td class="mono">{{ log.ip_address }}</td>
+                <td class="bold">{{ log.user_username }}</td>
+                <td>{{ log.action_details }}</td>
+                <td>
+                    <span class="severity-badge severity-{{ log.severity.lower() }}">{{ log.severity }}</span>
+                </td>
+                <td>
+                    <span class="status-badge status-{{ log.status.lower() }}">{{ log.status }}</span>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="pagination">
+        {% if logs.has_prev %}
+        <a href="{{ url_for('admin.audit', page=logs.prev_num, severity=severity_filter, search=search) }}" class="page-btn">PREV</a>
+        {% else %}
+        <span class="page-btn disabled">PREV</span>
+        {% endif %}
+
+        {% for p in logs.iter_pages(left_edge=2, right_edge=2, left_current=1, right_current=2) %}
+            {% if p %}
+            <a href="{{ url_for('admin.audit', page=p, severity=severity_filter, search=search) }}"
+               class="page-btn {% if p == logs.page %}active{% endif %}">{{ p }}</a>
+            {% else %}
+            <span class="page-btn">...</span>
+            {% endif %}
+        {% endfor %}
+
+        {% if logs.has_next %}
+        <a href="{{ url_for('admin.audit', page=logs.next_num, severity=severity_filter, search=search) }}" class="page-btn">NEXT</a>
+        {% else %}
+        <span class="page-btn disabled">NEXT</span>
+        {% endif %}
+    </div>
+    {% else %}
+    <p class="empty-state">No log entries match your filters.</p>
+    {% endif %}
+</div>
+{% endblock %}

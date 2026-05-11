@@ -1,0 +1,33 @@
+/* scoreboard - big display view, meant to go on a projector/screen */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body { font-family: 'Inter', sans-serif; background: #000; color: #fff; min-height: 100vh; }
+
+.scoreboard-wrap { max-width: 900px; margin: 0 auto; padding: 40px 30px; }
+
+.scoreboard-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+.event-num { display: block; font-size: 1rem; font-weight: 700; letter-spacing: 0.15em; color: #888; }
+.event-name { display: block; font-size: 1.1rem; font-weight: 400; letter-spacing: 0.05em; color: #aaa; }
+.heat-label { font-size: 0.85rem; font-weight: 700; letter-spacing: 0.1em; border: 1px solid #444; padding: 6px 16px; }
+
+.event-selector-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 28px; }
+.ev-chip { background: #1a1a1a; border: 1px solid #333; color: #888; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; padding: 5px 12px; text-decoration: none; }
+.ev-chip:hover { background: #2a2a2a; color: #fff; text-decoration: none; }
+.ev-chip-active { background: #fff; color: #000; border-color: #fff; }
+
+.scoreboard-table { width: 100%; border-collapse: collapse; }
+.scoreboard-table thead tr { border-bottom: 1px solid #333; }
+.scoreboard-table th { padding: 12px 16px; text-align: left; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.1em; color: #666; }
+.scoreboard-table th:last-child { text-align: right; }
+
+.sb-row-first { background: #fff; color: #000; }
+.sb-row-first td { padding: 20px 16px; }
+.sb-row td { padding: 14px 16px; border-bottom: 1px solid #1a1a1a; }
+
+.sb-rank { font-size: 1.4rem; font-weight: 900; width: 60px; }
+.sb-rank-first { font-size: 2.2rem; }
+.sb-lane { color: #666; width: 60px; }
+.sb-name { font-size: 1.2rem; font-weight: 700; letter-spacing: 0.03em; }
+.sb-name-first { font-size: 2rem; font-weight: 900; }
+.sb-time { font-family: 'JetBrains Mono', monospace; font-size: 1.2rem; font-weight: 700; text-align: right; }
+.sb-time-first { font-size: 2.4rem; font-weight: 900; }

@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Swim Score Pro{% endblock %} — Admin</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="admin-layout">
+
+<aside class="sidebar">
+    <div class="sidebar-brand">
+        <span class="brand-text">SWIM_SCORE_PRO</span>
+        <span class="badge-role">ADMIN</span>
+    </div>
+    <div class="sidebar-meta">
+        <span class="pool-name">OLYMPIC_POOL_A</span>
+        <span class="version">V3.0.4-STABLE</span>
+    </div>
+
+    <nav class="sidebar-nav">
+        <a href="{{ url_for('admin.dashboard') }}" class="nav-item {% if request.endpoint == 'admin.dashboard' %}active{% endif %}">
+            <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+            DASHBOARD
+        </a>
+        <a href="{{ url_for('admin.timer') }}" class="nav-item {% if request.endpoint in ['admin.timer','admin.add_athlete','admin.add_event'] %}active{% endif %}">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 15"/></svg>
+            LANE CONFIG
+        </a>
+        <a href="{{ url_for('admin.timer') }}" class="nav-item">
+            <svg viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>
+            HEAT SHEETS
+        </a>
+        <a href="{{ url_for('admin.timer') }}" class="nav-item {% if request.endpoint == 'admin.timer' %}active{% endif %}">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 15"/></svg>
+            OFFICIAL TIMER
+        </a>
+        <a href="{{ url_for('admin.audit') }}" class="nav-item {% if request.endpoint == 'admin.audit' %}active{% endif %}">
+            <svg viewBox="0 0 24 24"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+            SYSTEM LOGS
+        </a>
+    </nav>
+
+    <div class="sidebar-footer">
+        <form method="POST" action="{{ url_for('admin.export_csv', event_id=1) }}" style="display:none" id="export-form"></form>
+        <a href="{{ url_for('viewer.live') }}" class="btn-generate" target="_blank">LIVE VIEW</a>
+        <a href="{{ url_for('auth.logout') }}" class="btn-generate" style="margin-top:6px; background: #2a1111;">LOGOUT</a>
+    </div>
+</aside>
+
+<div class="main-wrap">
+    <header class="topbar">
+        <div class="topbar-left">
+            <span class="topbar-logo">SWIM_SCORE_PRO</span>
+            <span class="badge-role">ADMIN</span>
+            <span class="session-timer" id="session-timer">SESSION: --:--:--</span>
+        </div>
+        <nav class="topbar-nav">
+            <a href="{{ url_for('viewer.live') }}" class="topbar-link">LIVE_FEEDS</a>
+            <a href="{{ url_for('admin.timer') }}" class="topbar-link">MEET_MANAGER</a>
+            <a href="{{ url_for('admin.users') }}" class="topbar-link {% if request.endpoint in ['admin.users','admin.add_user','admin.edit_user','admin.delete_user'] %}active{% endif %}">ATHLETES</a>
+            <a href="{{ url_for('admin.audit') }}" class="topbar-link {% if request.endpoint == 'admin.audit' %}active{% endif %}">RECORDS</a>
+        </nav>
+        <div class="topbar-icons">
+            <a href="{{ url_for('admin.settings') }}" title="Settings">⚙</a>
+            <a href="{{ url_for('admin.dashboard') }}" title="History">◷</a>
+            <a href="{{ url_for('auth.logout') }}" title="Logout">⏻</a>
+        </div>
+    </header>
+
+    <main class="content">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for cat, msg in messages %}
+            <div class="flash flash-{{ cat }}">{{ msg }}</div>
+            {% endfor %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+</div>
+
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+{% block extra_scripts %}{% endblock %}
+</body>
+</html>

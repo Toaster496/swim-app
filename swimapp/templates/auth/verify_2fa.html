@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Verify Login{% endblock %}
+{% block body_class %}login-page{% endblock %}
+
+{% block body %}
+<div class="login-wrap">
+    <div class="login-box">
+        <h1 class="login-title">Multi-Factor Authentication</h1>
+        <p class="login-sub">Enter OTP Code</p>
+
+        {% if resent %}
+        <div class="login-success">A new code has been sent.</div>
+        {% endif %}
+
+        {% if error %}
+        <div class="login-error"><span>⚠</span> {{ error }}</div>
+        {% endif %}
+
+        <form method="POST" action="{{ url_for('auth.verify_2fa') }}" id="otp-form">
+            <div class="otp-inputs">
+                <input type="text" name="d1" id="d1" maxlength="1" class="otp-digit" inputmode="numeric" autocomplete="off">
+                <input type="text" name="d2" id="d2" maxlength="1" class="otp-digit" inputmode="numeric" autocomplete="off">
+                <input type="text" name="d3" id="d3" maxlength="1" class="otp-digit" inputmode="numeric" autocomplete="off">
+                <input type="text" name="d4" id="d4" maxlength="1" class="otp-digit" inputmode="numeric" autocomplete="off">
+                <input type="text" name="d5" id="d5" maxlength="1" class="otp-digit" inputmode="numeric" autocomplete="off">
+                <input type="text" name="d6" id="d6" maxlength="1" class="otp-digit" inputmode="numeric" autocomplete="off">
+            </div>
+
+            <div class="otp-meta">
+                <a href="{{ url_for('auth.resend_otp') }}" class="resend-link">Resend Code</a>
+                <span class="otp-timer" id="otp-countdown">⏱ 05:00</span>
+            </div>
+
+            <button type="submit" class="btn-login" id="verify-btn">VERIFY &amp; LOGIN →</button>
+        </form>
+
+        <a href="{{ url_for('auth.login') }}" class="back-link">← Back to login</a>
+    </div>
+    <div class="secure-badge">🔒 SECURE CONNECTION</div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // auto-focus first digit
+    document.getElementById('d1').focus();
+
+    // move focus to next box as you type
+    document.querySelectorAll('.otp-digit').forEach(function(input, i, all) {
+        input.addEventListener('input', function() {
+            if (this.value.length === 1 && i < all.length - 1) {
+                all[i + 1].focus();
+            }
+        });
+        input.addEventListener('keydown', function(e) {
+            if (e.key === 'Backspace' && !this.value && i > 0) {
+                all[i - 1].focus();
+            }
+        });
+    });
+
+    // countdown timer - 5 min from page load
+    var seconds = 300;
+    var timer = setInterval(function() {
+        seconds--;
+        var m = Math.floor(seconds / 60);
+        var s = seconds % 60;
+        document.getElementById('otp-countdown').textContent = '⏱ ' +
+            String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+        if (seconds <= 0) {
+            clearInterval(timer);
+            document.getElementById('otp-countdown').textContent = 'Expired';
+            document.getElementById('verify-btn').disabled = true;
+        }
+    }, 1000);
+</script>
+{% endblock %}

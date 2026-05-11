@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if event %}{{ event.name }} — {% endif %}Scoreboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/scoreboard.css') }}">
+</head>
+<body class="scoreboard-body">
+
+<div class="scoreboard-wrap">
+    {% if event %}
+    <div class="scoreboard-header">
+        <div class="event-label">
+            <span class="event-num">EVENT {{ event.id }}</span>
+            <span class="event-name">{{ event.name.upper() }}</span>
+        </div>
+        <div class="heat-label">HEAT {{ event.heat }}</div>
+    </div>
+
+    <div class="event-selector-bar">
+        {% for ev in events %}
+        <a href="{{ url_for('viewer.scoreboard', event_id=ev.id) }}"
+           class="ev-chip {% if event.id == ev.id %}ev-chip-active{% endif %}">
+            {{ ev.event_code }}
+        </a>
+        {% endfor %}
+    </div>
+
+    <table class="scoreboard-table">
+        <thead>
+            <tr>
+                <th>RANK</th>
+                <th>LANE</th>
+                <th>NAME</th>
+                <th style="text-align:right">TIME</th>
+            </tr>
+        </thead>
+        <tbody id="scoreboard-body">
+            {% if athletes %}
+            {% for a in athletes %}
+            <tr class="{{ 'sb-row-first' if loop.first else 'sb-row' }}">
+                <td class="sb-rank {{ 'sb-rank-first' if loop.first else '' }}">{{ a.rank or loop.index }}</td>
+                <td class="sb-lane">{{ a.lane }}</td>
+                <td class="sb-name {{ 'sb-name-first' if loop.first else '' }}">{{ a.name.upper() }}</td>
+                <td class="sb-time {{ 'sb-time-first' if loop.first else '' }}">{{ a.time_display() }}</td>
+            </tr>
+            {% endfor %}
+            {% else %}
+            <tr><td colspan="4" style="text-align:center; padding:3rem; opacity:0.4">Waiting for results...</td></tr>
+            {% endif %}
+        </tbody>
+    </table>
+    {% else %}
+    <div style="text-align:center; padding:4rem;">
+        <p style="font-size:1.5rem; opacity:0.5">No events available yet.</p>
+        <a href="{{ url_for('auth.login') }}" style="color:#fff; opacity:0.5; text-decoration:underline;">Admin login</a>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+// auto-refresh the scoreboard every 3 seconds
+var eventId = {{ event.id if event else 'null' }};
+
+if (eventId) {
+    setInterval(function() {
+        fetch('/api/live?event_id=' + eventId)
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                var tbody = document.getElementById('scoreboard-body');
+                if (!tbody) return;
+                tbody.innerHTML = '';
+                data.data.forEach(function(a, i) {
+                    var tr = document.createElement('tr');
+                    tr.className = i === 0 ? 'sb-row-first' : 'sb-row';
+                    tr.innerHTML =
+                        '<td class="sb-rank' + (i === 0 ? ' sb-rank-first' : '') + '">' + a.rank + '</td>' +
+                        '<td class="sb-lane">' + a.lane + '</td>' +
+                        '<td class="sb-name' + (i === 0 ? ' sb-name-first' : '') + '">' + a.name.toUpperCase() + '</td>' +
+                        '<td class="sb-time' + (i === 0 ? ' sb-time-first' : '') + '">' + a.time + '</td>';
+                    tbody.appendChild(tr);
+                });
+            })
+            .catch(function() {});
+    }, 3000);
+}
+</script>
+</body>
+</html>
