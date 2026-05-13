@@ -45,6 +45,22 @@ def create_app():
         db.create_all()
         _seed_defaults()
 
+    # Debug route to reset admin password - REMOVE AFTER USE
+    @app.route('/reset-admin')
+    def reset_admin():
+        from .models import User
+        from werkzeug.security import generate_password_hash
+        
+        admin = User.query.filter_by(username='admin').first()
+        if admin:
+            new_pass = os.environ.get('ADMIN_PASSWORD', 'Admin1234!')
+            admin.password_hash = generate_password_hash(new_pass)
+            admin.email = os.environ.get('ADMIN_EMAIL', 'admin@swimscore.local')
+            admin.is_active = True
+            db.session.commit()
+            return f'Admin reset. Username: admin, Password: {new_pass}<br>Check logs for OTP after login.'
+        return 'Admin user not found'
+
     return app
 
 
