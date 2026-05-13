@@ -51,15 +51,37 @@ def create_app():
         from .models import User
         from werkzeug.security import generate_password_hash
         
+        # Delete existing admin and recreate fresh
         admin = User.query.filter_by(username='admin').first()
         if admin:
-            new_pass = os.environ.get('ADMIN_PASSWORD', 'Admin1234!')
-            admin.password_hash = generate_password_hash(new_pass)
-            admin.email = os.environ.get('ADMIN_EMAIL', 'admin@swimscore.local')
-            admin.is_active = True
+            db.session.delete(admin)
             db.session.commit()
-            return f'Admin reset. Username: admin, Password: {new_pass}<br>Check logs for OTP after login.'
-        return 'Admin user not found'
+        
+        new_pass = os.environ.get('ADMIN_PASSWORD', 'Admin1234!')
+        admin_email = os.environ.get('ADMIN_EMAIL', 'admin@swimscore.local')
+        admin = User(
+            username='admin',
+            email=admin_email,
+            password_hash=generate_password_hash(new_pass),
+            role='admin',
+            is_active=True
+        )
+        db.session.add(admin)
+        db.session.commit()
+        return f'Admin reset complete!<br>Username: <b>admin</b><br>Password: <b>{new_pass}</b><br><br>After logging in, check the Render logs for a line like:<br><code>[2FA] OTP for {admin_email}: XXXXXX</code><br>Enter that 6-digit code on the verification page.'
+    
+    # Debug route to check all users
+    @app.route('/debug-users')
+    def debug_users():
+        from .models import User
+        users = User.query.all()
+        html = '<h1>All Users:</h1><ul>'
+        for u in users:
+            html += f'<li>Username: {u.username}, Email: {u.email}, Active: {u.is_active}, Role: {u.role}</li>'
+        html += '</ul>'
+        if not users:
+            html += '<p>No users found!</p>'
+        return html
 
     return app
 
