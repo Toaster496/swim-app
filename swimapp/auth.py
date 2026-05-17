@@ -103,6 +103,9 @@ def verify_2fa():
 
     error = None
     resent = request.args.get('resent')
+    
+    # Get the current OTP to display (for development/testing without email)
+    otp_display = session.get('otp', '')
 
     if request.method == 'POST':
         # collect the 6 individual digit inputs
@@ -130,7 +133,7 @@ def verify_2fa():
             _log('Successful login via 2FA', severity='INFO', status='SUCCESS')
             return redirect(url_for('admin.dashboard'))
 
-    return render_template('auth/verify_2fa.html', error=error, resent=resent)
+    return render_template('auth/verify_2fa.html', error=error, resent=resent, otp_display=otp_display)
 
 
 @auth_bp.route('/resend-otp')
